@@ -8,12 +8,12 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract STT is ERC20,Ownable,ReentrancyGuard{
     using SafeMath for uint256;
-    uint256[] public _unix_time_end;
-    uint256[] public _amount_to_mint;
-    uint256[] public _period_mint;
+    uint256[]  _unix_time_end;
+    uint256[]  _amount_to_mint;
+    uint256[]  _period_mint;
     uint256  _sell_fee;
     address  _fee_keeper;
-    address public _minter;
+    address _minter_address;
     event changeSellFee(uint256 old_fee,uint256 new_fee);
     event changeFeeOwner(address old_fee_keeper,address new_fee_keeper);
     event changeMinter(address old_minter_address,address new_minter_address);
@@ -37,7 +37,8 @@ contract STT is ERC20,Ownable,ReentrancyGuard{
             _period_mint.push(1);
         }
         _sell_fee = 20;
-        _minter = owner();
+        _minter_address = owner();
+        _fee_keeper = owner();
     }
 
     
@@ -50,8 +51,8 @@ contract STT is ERC20,Ownable,ReentrancyGuard{
 
     function change_minter(address _address_minter)  external onlyOwner{
         require(_address_minter != address(0),"can't not be 0x address");
-        emit changeMinter(_minter,_address_minter);
-        _minter = _address_minter;
+        emit changeMinter(_minter_address,_address_minter);
+        _minter_address = _address_minter;
     }
 
     function change_fee_owner(address _keeper) external onlyOwner {
@@ -66,7 +67,7 @@ contract STT is ERC20,Ownable,ReentrancyGuard{
         require(_period < _unix_time_end.length,"STT : Period doesnt exist");
         require(block.timestamp > _unix_time_end[_period],"STT : Time is not reached to mint");
         require(_period_mint[_period] == 1,"STT : This period has minted");
-        _mint(_minter,_amount_to_mint[_period]);
+        _mint(_minter_address,_amount_to_mint[_period]);
         _period_mint[_period] = 2;
         emit mintInPeriod(owner(),_period,_amount_to_mint[_period]);
     }
@@ -74,12 +75,28 @@ contract STT is ERC20,Ownable,ReentrancyGuard{
     function mint_out_of_period(uint256 amount) external onlyOwner nonReentrant{
         require(_unix_time_end.length > 0,"STT : dont have period");
         require(block.timestamp > _unix_time_end[_unix_time_end.length - 1],"STT : Cant use function util end period");
-        _mint(_minter,amount);
+        _mint(_minter_address,amount);
         emit mintOutOfPeriod(owner(),amount);
     }
 
     function computeSellFee(uint256 tokenAmount) external view returns (uint256 fee, address to) {
         fee = tokenAmount * _sell_fee / 1000;
         to = _fee_keeper;
+    }
+
+    function get_unix_end_time(uint256 _period) public view returns(uint256) {
+        return _unix_time_end[_period];
+    }
+
+    function get_amount_to_mint(uint256 _period) public view returns(uint256) {
+        return _amount_to_mint[_period];
+    }
+
+    function get_period_mint(uint256 _period) public view returns(uint256) {
+        return _period_mint[_period];
+    }
+
+    function get_minter_address() public view returns(address){
+        return _minter_address;
     }
 }
